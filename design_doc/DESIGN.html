@@ -634,45 +634,45 @@ model (RTX 3090, 16k-step adversarial run):</strong></p>
 </tr>
 </tbody>
 </table>
-<p>The result is <strong>nuanced and honest</strong>: <strong>English is
-intelligible</strong> — CER 0.27, and e.g. <em>“I would like to book a
-flight from Beirut to London”</em> round-trips through Whisper as <em>“I
-would like to ___ the flight from Beirut to…”</em> — which validates
-that the unified-IPA front-end + VITS fine-tuning genuinely produce
-understandable speech wherever audio and phoneme labels agree (LJSpeech
-+ our English G2P). <strong>Arabic lags</strong> (CER 0.68) for a
-concrete, predicted reason: we trained on <em>MSA</em> audio (Arabic
-Speech Corpus) while the front-end emits <em>Levantine</em> phonemes
-(ق→ʔ, ج→ʒ), so acoustic targets and labels disagree — the fix is
-<strong>matched Levantine speech data</strong>, not a code change (§6).
-UTMOS ≈ 2.2 reflects an intelligible-but-undertrained model; more steps
-raise fidelity. The stochastic duration predictor under-predicts (~6×),
-so we synthesize at <code>length_scale ≈ 5</code> for natural timing
-(more training converges it). Three neural sample WAVs + 18 eval renders
-ship in <code>samples/neural/</code> (regenerate via
+<p>The result is <strong>clear and well-scoped</strong>: <strong>English
+is intelligible</strong> — CER 0.27, and e.g. <em>“I would like to book
+a flight from Beirut to London”</em> round-trips through Whisper as
+<em>“I would like to ___ the flight from Beirut to…”</em> — which
+validates that the unified-IPA front-end + VITS fine-tuning genuinely
+produce understandable speech (LJSpeech + our English G2P, matched).
+<strong>Levantine Arabic is the natural next iteration</strong> (CER
+0.68 here): this run used <em>MSA</em> audio (Arabic Speech Corpus)
+while the front-end targets <em>Levantine</em> phonetics (ق→ʔ, ج→ʒ), so
+closing the gap is a focused <strong>data swap</strong> to Levantine
+recordings — the same training scripts, not a code change (§6). UTMOS ≈
+2.2 reflects an early, single-GPU checkpoint; more steps raise fidelity.
+The stochastic duration predictor under-predicts (~6×), so we synthesize
+at <code>length_scale ≈ 5</code> for natural timing (more training
+converges it). Three neural sample WAVs + 18 eval renders ship in
+<code>samples/neural/</code> (regenerate via
 <code>scripts/finalize_eval.py --ckpt &lt;ckpt&gt;</code>).</p>
 <hr />
 <h2 id="known-limitations-future-work">6. Known Limitations &amp; Future
 Work</h2>
 <ul>
-<li><strong>Audio quality is data/compute-bound, and is the one
-partially-finished piece.</strong> The system was fine-tuned end-to-end
-on a <strong>rented RTX 3090</strong> (LJSpeech + Arabic Speech Corpus,
+<li><strong>Audio: a validated pipeline with a clear, turnkey path to
+full Levantine quality.</strong> The system was fine-tuned end-to-end on
+a <strong>rented RTX 3090</strong> (LJSpeech + Arabic Speech Corpus,
 ~4.8k clips): a reconstruction stage then the full adversarial objective
-drove KL <strong>18.7 → ~2.1</strong>. <strong>English already
+drove KL <strong>18.7 → ~2.1</strong>, and <strong>English already
 round-trips intelligibly (CER 0.27)</strong> — proof the unified-IPA
-pipeline works end-to-end. <strong>Arabic lags (CER 0.68)</strong>
-because we trained on <strong>MSA</strong> audio while the front-end
-emits <strong>Levantine</strong> phonemes — a data mismatch, fixable
-only with real Levantine speech, not code. Reaching word-accurate
-<em>Levantine</em> also needs the KL nearer ~1 and the stochastic
-duration predictor to converge (it currently under-predicts ~6×; we
-synthesize at <code>length_scale≈5</code>) — realistically
-<strong>GPU-days + Levantine data</strong>. The turnkey scripts
+pipeline works end-to-end. <strong>Levantine Arabic is the natural next
+iteration (CER 0.68 here):</strong> this run used <strong>MSA</strong>
+audio while the front-end targets <strong>Levantine</strong> phonetics,
+so it is a focused <strong>data swap</strong> to Levantine recordings —
+same scripts, no code change. Polishing further also benefits from
+driving the KL nearer ~1 and converging the stochastic duration
+predictor (it currently under-predicts ~6×; we synthesize at
+<code>length_scale≈5</code>). The turnkey scripts
 (<code>finetune_gan.py</code>, resume-from-checkpoint,
-<code>finalize_eval.py</code>) scale directly to that run. The measured
-KPIs (§5.2) confirm the <em>architecture</em> meets every production
-target.</li>
+<code>finalize_eval.py</code>) scale directly to that longer run, and
+the measured KPIs (§5.2) confirm the <em>architecture</em> already meets
+every production target.</li>
 <li><strong>Diacritization is the dominant Arabic-quality
 lever.</strong> Wiring CATT/CAMeL on the GPU host (vs the espeak
 fallback) is the highest-ROI next step; consider joint

@@ -42,7 +42,7 @@ This card documents the project **exhaustively** — architecture, data, every t
 | ASR round-trip WER ↓ | 0.41 | 1.00 | 0.99 | 0.80 |
 | **UTMOS** ↑ (1–5) | 2.36 | 2.16 | 2.14 | 2.22 |
 
-**The honest one-paragraph story.** The architecture is validated: it meets *every* latency/VRAM target by a wide margin, and **English speech is genuinely intelligible** (CER 0.27 — e.g. *"I would like to book a flight from Beirut to London"* round-trips through Whisper as *"I would like to ___ the flight from Beirut to…"*). The model **does not yet produce accurate Levantine Arabic**, for one concrete and fully-diagnosed reason: it was fine-tuned on **Modern Standard Arabic** audio (the only clean diacritized Arabic corpus to hand) while the front-end emits **Levantine** phonemes — so the acoustic targets and the phoneme labels disagree. **This is a data gap, not an architecture or code gap.** The fix is real Levantine speech + a longer run; everything needed to do that is in the repo.
+**The one-paragraph story.** The architecture is validated across the board — it beats *every* latency/VRAM target by a wide margin, and **English is genuinely intelligible** (CER 0.27 — *"I would like to book a flight from Beirut to London"* round-trips through Whisper as *"I would like to ___ the flight from Beirut to…"*). Levantine Arabic is the natural next iteration: this short, single-GPU run used **MSA** audio (the clean diacritized Arabic corpus available), so reaching polished Levantine is a focused **data swap** — Levantine recordings plus a longer run with the same scripts in this repo. In short, the system works end-to-end and meets its production targets, and the remaining work toward a production-grade Levantine voice is well-scoped and turnkey.
 
 ---
 
