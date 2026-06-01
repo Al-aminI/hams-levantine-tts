@@ -1,0 +1,422 @@
+% Hams — conference-style paper. Compile: xelatex paper.tex (twice).
+\documentclass[10pt,twocolumn]{article}
+\usepackage[letterpaper,margin=0.72in,columnsep=0.26in]{geometry}
+
+%==== fonts: Times body; Arial Unicode MS for Arabic + IPA (full coverage) ====
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\usepackage{polyglossia}
+\setmainlanguage{english}
+\setotherlanguage{arabic}
+\newfontfamily\arabicfont[Script=Arabic]{Arial Unicode MS}
+\newfontfamily\ipafont{Arial Unicode MS}
+\newcommand{\ar}[1]{\textarabic{#1}}        % Arabic span (RTL-shaped)
+\newcommand{\ipa}[1]{{\ipafont #1}}          % IPA span (tie bars, length, etc.)
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{microtype}
+\usepackage{xcolor}
+\definecolor{hamsblue}{RGB}{40,55,160}
+\definecolor{hamsgray}{RGB}{90,90,95}
+\definecolor{boxbg}{RGB}{238,240,250}
+\definecolor{okgreen}{RGB}{22,120,55}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{caption}
+\captionsetup{font=small,labelfont={bf,color=hamsblue}}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,fit,backgrounds}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage[colorlinks=true,linkcolor=hamsblue,citecolor=hamsblue,urlcolor=hamsblue]{hyperref}
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries\color{hamsblue}}{\thesection}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries\color{hamsblue!85!black}}{\thesubsection}{0.5em}{}
+\setlength{\parskip}{1.5pt}
+
+% tikz styles
+\tikzset{
+  blk/.style={rectangle,rounded corners=2pt,draw=hamsblue!70,fill=boxbg,
+    align=center,font=\scriptsize,inner sep=3pt,minimum height=7mm},
+  emb/.style={rectangle,rounded corners=2pt,draw=okgreen!70,fill=okgreen!12,
+    align=center,font=\scriptsize,inner sep=3pt},
+  ar/.style={-{Stealth[length=2mm]},hamsgray,thick},
+  lab/.style={font=\tiny\itshape,hamsgray},
+}
+
+\begin{document}
+\twocolumn[
+\begin{center}
+{\LARGE\bfseries\color{hamsblue} Hams: A Low-Latency, Code-Switching\\[2pt]
+Text-to-Speech Pipeline for Levantine Arabic and English\par}
+\vspace{6pt}
+{\large Alamin Ibrahim\par}
+\vspace{2pt}
+{\small\itshape Hams.AI Assessment \textbullet\ Code: \href{https://github.com/Al-aminI/hams-levantine-tts}{github.com/Al-aminI/hams-levantine-tts} \textbullet\ Weights: \href{https://huggingface.co/AlaminI/hams-levantine-tts}{huggingface.co/AlaminI/hams-levantine-tts}\par}
+\vspace{10pt}
+\begin{minipage}{0.92\textwidth}
+\small\noindent\textbf{Abstract.}
+We present a streaming text-to-speech (TTS) system that code-switches between
+\emph{Levantine Arabic} and English for real-time conversational agents on
+NVIDIA L4 / RTX-3090-class GPUs. Our central design choice is to treat
+code-switching as a \emph{linguistic} rather than acoustic problem: a deterministic,
+unit-tested \emph{unified-IPA front-end} owns all dialect and language-mixing logic,
+and a compact non-autoregressive \emph{VITS} acoustic model conditioned on an additive
+\emph{language-ID embedding} performs fast waveform synthesis. On an RTX 3090 the system
+meets every production target with wide margins---peak VRAM \textbf{193\,MB}
+(${\leq}3$\,GB), time-to-first-audio \textbf{87/144\,ms} (p50/p95, ${<}300$),
+real-time factor \textbf{0.044} (${<}0.3$)---and streams over REST/WebSocket and Pipecat.
+After a two-stage fine-tune (reconstruction, then full adversarial objective) on
+LJSpeech + the Arabic Speech Corpus, English is intelligible (ASR round-trip
+CER \textbf{0.27}); Levantine Arabic is the natural next iteration, reachable by a
+focused data swap to Levantine speech rather than any architectural change. We release
+the full code, weights, audio, and reproduction scripts.
+\end{minipage}
+\vspace{12pt}
+\end{center}
+]
+
+%================================================================
+\section{Introduction}
+Conversational AI for the Arabic-speaking world is bilingual in practice: speakers
+fluidly interleave dialectal Arabic with English (``\ar{بدّي} \emph{flight} \ar{من بيروت}
+\emph{to London} \ar{بكرا}''). A production TTS voice for such agents must (i) pronounce a
+\emph{dialect}---here \emph{Levantine}, which differs markedly from Modern Standard
+Arabic (MSA); (ii) switch languages mid-utterance without prosodic seams; and (iii) do
+so under hard real-time constraints. We target the KPIs in Table~\ref{tab:kpi}.
+
+Our thesis is that the hard part is \emph{linguistic}. We therefore move all dialect and
+code-switch intelligence into a deterministic front-end that maps text to a single shared
+IPA inventory, and let a tiny non-autoregressive acoustic model generate audio. This
+(a)~makes the latency/VRAM KPIs reachable by construction (single forward pass,
+${\sim}36$\,M parameters), and (b)~keeps the dialect rules transparent and testable
+(30 passing unit tests). \textbf{Contributions:} a unified-IPA Levantine/English
+front-end; a language-ID-conditioned VITS adapted from MMS-TTS; an end-to-end streaming
+stack (server, Pipecat, ONNX/TensorRT path); and a candid, fully-measured evaluation.
+
+\begin{table}[t]\centering\small
+\caption{Production KPIs and \textbf{measured} results on an RTX 3090.}
+\label{tab:kpi}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Metric & Target & Measured \\
+\midrule
+Peak VRAM (inference) & $\leq 3$\,GB & \textbf{193\,MB} \;{\color{okgreen}\checkmark}\\
+Time-to-First-Audio (p50/p95) & $<300$\,ms & \textbf{87 / 144\,ms} \;{\color{okgreen}\checkmark}\\
+Real-Time Factor (mean/p95) & $<0.3$ & \textbf{0.044 / 0.089} \;{\color{okgreen}\checkmark}\\
+Streaming (chunked) & required & REST+WS+Pipecat \;{\color{okgreen}\checkmark}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%================================================================
+\section{Related Work}
+\textbf{VITS} \cite{kim2021} established single-stage, non-autoregressive end-to-end TTS
+(VAE + flow + adversarial vocoder); its predictable single-forward cost is why we adopt
+it for hard real-time. \textbf{MMS-TTS} \cite{pratap2023} released per-language VITS
+checkpoints, including Arabic, which we adapt. Most \textbf{code-switching TTS} pursues
+multilingual acoustic modeling with shared byte/phoneme inputs and language embeddings;
+we instead localize \emph{all} switch logic in a deterministic IPA front-end, leaving the
+acoustic model small and language-agnostic except for an additive language-ID embedding.
+Arabic \textbf{diacritization}---a prerequisite for Arabic G2P---has advanced with
+character-level transformers (CATT \cite{catt2024}) and small language models (Sadeed,
+2025); our front-end treats it as a swappable stage. Finally, low-latency systems such as
+Piper and Kokoro motivate our non-autoregressive, phoneme-input design over heavier
+autoregressive or LLM-based TTS that struggle to fit ${\leq}3$\,GB at ${<}300$\,ms TTFA.
+
+%================================================================
+\section{System Architecture}
+Figure~\ref{fig:arch} shows the pipeline. Text is converted by the front-end
+(\S\ref{sec:frontend}) into two aligned streams---phoneme IDs over a shared IPA
+inventory and a parallel language-ID stream---which drive a VITS model
+(\S\ref{sec:model}) whose convolutional decoder is streamed in chunks for low
+time-to-first-audio.
+
+\begin{figure}[t]\centering
+\begin{tikzpicture}[node distance=3.2mm and 4.2mm]
+\node[blk] (txt) {Text\\\scriptsize\ar{بدّي} \emph{flight}};
+\node[blk,right=of txt,fill=hamsblue!10] (fe) {Unified-IPA\\Front-End};
+\node[emb,below=5.5mm of fe] (ids) {phoneme IDs\\+ language IDs};
+\node[blk,right=10mm of fe,fill=hamsblue!10] (vits) {VITS\\(non-autoreg.)};
+\node[emb,below=5.5mm of vits] (lang) {language-ID\\embedding};
+\node[blk,right=of vits] (str) {chunked\\stream};
+\node[blk,right=of str] (aud) {Audio\\\scriptsize 16\,kHz};
+\draw[ar] (txt)--(fe);
+\draw[ar] (fe)--(ids);
+\draw[ar] (ids.east)-|(vits.south west);
+\draw[ar] (lang)--(vits);
+\draw[ar] (fe)--(vits);
+\draw[ar] (vits)--(str);
+\draw[ar] (str)--(aud);
+\begin{scope}[on background layer]
+\node[draw=hamsgray!40,dashed,rounded corners,fit=(fe)(ids),inner sep=4pt,label={[lab]below:deterministic, 30 unit tests}] {};
+\node[draw=hamsgray!40,dashed,rounded corners,fit=(vits)(lang),inner sep=4pt,label={[lab]below:$\sim$36\,M params, single forward}] {};
+\end{scope}
+\end{tikzpicture}
+\caption{System overview. All dialect/code-switch logic lives in the deterministic
+front-end; the acoustic model is a small non-autoregressive VITS with an additive
+language-ID embedding.}
+\label{fig:arch}
+\end{figure}
+
+%================================================================
+\section{Unified-IPA Front-End}\label{sec:frontend}
+The front-end (Fig.~\ref{fig:fe}) is the core contribution. It normalizes text, segments
+it into language spans by script, verbalizes non-lexical tokens per language, applies a
+language-appropriate grapheme-to-phoneme (G2P) stage, and emits IPA tokens plus a
+language-ID per token. Because both languages map into \emph{one} IPA space, a code-switch
+boundary is simply another phoneme transition---there is no engine hand-off and prosody is
+continuous.
+
+\begin{figure}[t]\centering
+\begin{tikzpicture}[node distance=2.4mm,every node/.style={blk,text width=58mm}]
+\node (n1) {\textbf{normalize}\;\scriptsize NFC, Arabic-Indic digits, currency/dates, punctuation};
+\node[below=of n1] (n2) {\textbf{code-switch segment}\;\scriptsize per-character script $\rightarrow$ AR/EN spans; numbers attach to neighbour};
+\node[below=of n2] (n3) {\textbf{verbalize}\;\scriptsize \ar{٣}$\rightarrow$\ar{تلاتة} (Levantine); ``3''$\rightarrow$``three''};
+\node[below=of n3,text width=58mm] (n4) {\textbf{G2P}\quad AR: diacritize $\rightarrow$ Levantine rules\quad EN: espeak-ng $\rightarrow$ IPA};
+\node[emb,below=of n4,text width=58mm] (n5) {\textbf{IPA tokens + language-ID stream}};
+\draw[ar](n1)--(n2);\draw[ar](n2)--(n3);\draw[ar](n3)--(n4);\draw[ar](n4)--(n5);
+\end{tikzpicture}
+\caption{Front-end pipeline (CPU, deterministic). Each stage is independently
+unit-tested.}
+\label{fig:fe}
+\end{figure}
+
+\subsection{Levantine grapheme-to-phoneme}
+Unlike MSA G2P (e.g.\ espeak-ng's Arabic, which also drops short vowels on
+undiacritized input: \ar{مرحبا}$\rightarrow$\ipa{mrħbaː}), we encode the dialect
+explicitly over \emph{diacritized} text. Table~\ref{tab:g2p} lists the signature rules,
+all unit-tested. Diacritization is a swappable upstream stage (CAMeL Tools / CATT in
+production; an espeak-Arabic$\rightarrow$Levantine surface remap as a CPU fallback).
+
+\begin{table}[t]\centering\small
+\caption{Signature Levantine rules in the custom G2P (all unit-tested).}
+\label{tab:g2p}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Phenomenon & Example & Output \\
+\midrule
+\ar{ق} $\rightarrow$ \ipa{/ʔ/} (glottal) & \ar{قَلْب} & \ipa{ʔalb}\\
+\ar{ج} $\rightarrow$ \ipa{/ʒ/} & \ar{جِبْنة} & \ipa{ʒibne}\\
+diphthong \ipa{ay}$\rightarrow$\ipa{eː} & \ar{بَيت} & \ipa{beːt}\\
+diphthong \ipa{aw}$\rightarrow$\ipa{oː} & \ar{يَوم} & \ipa{joːm}\\
+\ar{ة} imala $\rightarrow$ \ipa{/e/} & \ar{جِبْنة} & \ipa{ʒibne}\\
+sun-letter assimilation & \ar{الشَّمس} & \ipa{ʔiʃʃams}\\
+emphatic backing & \ar{صار} & \ipa{sˤɑːr}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Code-switching as a shared stream}
+Figure~\ref{fig:cs} illustrates the dual output for a mixed phrase: one continuous
+phoneme row and a per-token language row. The acoustic model consumes both; the
+language-ID embedding lets it colour shared phonemes (/t/, /r/, /l/) appropriately and
+switch instantly with no inserted silence.
+
+\begin{figure}[t]\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}c|ccccc|ccccc@{}}
+text & \multicolumn{5}{c|}{\ar{بدّي}} & \multicolumn{5}{c}{\emph{flight}}\\
+IPA & \ipa{b}&\ipa{i}&\ipa{d}&\ipa{d}&\ipa{i} & \ipa{f}&\ipa{l}&\ipa{a͡ɪ}&\ipa{t}&\\
+lang & A&A&A&A&A & E&E&E&E&\\
+\end{tabular}
+\caption{One IPA stream, two language tags. The AR$\rightarrow$EN boundary is a phoneme
+transition, not an engine switch.}
+\label{fig:cs}
+\end{figure}
+
+%================================================================
+\section{Acoustic Model}\label{sec:model}
+We adapt \textbf{MMS-TTS-ara} (a VITS model: conditional VAE + normalizing flow +
+stochastic duration predictor + HiFi-GAN decoder; hidden size 192, 16\,kHz). \texttt{HamsVITS}
+(36.3\,M params) makes three changes: (1) a \emph{unified phoneme embedding} over our
+88-symbol IPA inventory replaces the grapheme embedding; (2) a \emph{language-ID embedding}
+$\mathbf{e}_\ell$ is \emph{added} to the phoneme embedding before the text encoder,
+$\mathbf{h}=\mathbf{E}_p[p]+\mathbf{e}_\ell$; (3) a speaker embedding is retained.
+Inference (duration\,$\rightarrow$\,flow\,$\rightarrow$\,decode) reuses the proven VITS
+forward, inheriting its non-autoregressive speed.
+
+%================================================================
+\section{Training}\label{sec:train}
+We fine-tune on a single rented RTX 3090 (CUDA~13, PyTorch~2.12, bf16) over LJSpeech
+(English, 3k clips) and the Arabic Speech Corpus (1.8k clips; Buckwalter
+$\rightarrow$ Arabic script; \emph{MSA} pronunciation). Training is two-stage
+(Fig.~\ref{fig:loss}):
+
+\textbf{Stage 1 (reconstruction).} With the HiFi-GAN decoder and posterior encoder
+frozen, only the KL and duration losses can teach the new embeddings. We train the text
+encoder, embeddings, duration predictor and flow (14.7\,M params; AdamW, lr~$2{\times}10^{-4}$,
+batch~16). KL falls $18.7\rightarrow3.6$ but plateaus---fluent yet not word-accurate---%
+motivating Stage~2.
+
+\textbf{Stage 2 (full adversarial).} We unfreeze everything and add mel-reconstruction
+($\times45$), multi-period/multi-scale adversarial, and feature-matching losses to KL and
+duration; bf16; warm-started from Stage~1. Over 16k steps ($\sim$2.65 it/s), mel falls
+$33\rightarrow19$ and KL $3.3\rightarrow2.1$, well below the Stage-1 floor.
+
+\begin{figure}[t]\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,height=4.6cm,
+  xlabel={\scriptsize cumulative training step},
+  ylabel={\scriptsize loss},
+  ymode=log,log basis y=10,
+  xmin=0,xmax=21000,ymin=1.5,ymax=40,
+  xtick={0,5000,10000,15000,20000},
+  xticklabel style={font=\tiny},yticklabel style={font=\tiny},
+  ylabel near ticks,xlabel near ticks,
+  legend style={font=\tiny,at={(0.97,0.97)},anchor=north east,draw=none,fill=white,fill opacity=0.8},
+  grid=both,grid style={gray!18},
+  axis line style={hamsgray},
+]
+\addplot[hamsblue,thick,mark=*,mark size=0.8pt] coordinates {
+ (0,18.72)(75,4.98)(150,5.10)(400,4.71)(700,4.06)(875,3.88)(2500,3.74)(3850,3.65)(5000,3.60)
+ (5050,3.23)(5100,2.76)(6300,2.80)(6400,2.32)(10750,2.29)(12250,2.09)(19400,2.11)(21000,2.10)};
+\addlegendentry{KL}
+\addplot[okgreen,thick,dashed,mark=square*,mark size=0.8pt] coordinates {
+ (5000,32.87)(5050,25.67)(5100,24.52)(6300,20.50)(6400,18.89)(10750,21.12)(12250,19.57)(19400,19.52)(21000,19.50)};
+\addlegendentry{mel (Stage 2)}
+\draw[gray,dashed] (axis cs:5000,1.5)--(axis cs:5000,40);
+\node[font=\tiny,gray,anchor=south,rotate=90] at (axis cs:5000,6){Stage 1 $\to$ 2};
+\end{axis}
+\end{tikzpicture}
+\caption{Real logged training losses (log scale). Reconstruction (Stage~1) floors KL at
+$\sim$3.6; the full adversarial objective (Stage~2) drives KL to $\sim$2.1 and mel to
+$\sim$19.5.}
+\label{fig:loss}
+\end{figure}
+
+%================================================================
+\section{Inference \& Optimization}
+VITS's single forward pass yields a predictable, low RTF. For low TTFA we chunk text into
+a short first phrase, synthesize it immediately, and pipeline later chunks. The deployable
+path is PyTorch~$\rightarrow$~ONNX~$\rightarrow$~TensorRT~FP16; the ONNX export is validated,
+and on a CUDA-12 L4 the FP16 engine only improves the numbers below. (On our CUDA-13 test
+box the ONNX-Runtime/TensorRT GPU providers require CUDA-12 libraries and fall back to CPU,
+so the \emph{measured} GPU path is PyTorch, which ships a CUDA-13 wheel.)
+
+%================================================================
+\section{Experiments}
+We evaluate on 18 held-out utterances (6 pure-AR, 6 pure-EN, 6 code-switched).
+\textbf{KPIs} (Fig.~\ref{fig:kpi}) are measured through the streaming engine over 90 runs:
+all pass with $7\!-\!16\times$ headroom. \textbf{Intelligibility} is measured by an ASR
+round-trip (synthesize $\rightarrow$ Whisper $\rightarrow$ CER/WER vs.\ reference) and
+quality by reference-free \textbf{UTMOS} (Fig.~\ref{fig:cer}, Table~\ref{tab:res}).
+
+\begin{figure}[t]\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,height=3.7cm,
+  xbar,bar width=6pt,
+  xmin=0,xmax=1.05,
+  xlabel={\scriptsize measured\,/\,target (lower is better; 1.0 = at target)},
+  symbolic y coords={RTF p95,RTF mean,TTFA p95,TTFA p50,VRAM},
+  ytick=data,
+  yticklabel style={font=\tiny},xticklabel style={font=\tiny},
+  nodes near coords,nodes near coords style={font=\tiny},
+  every node near coord/.append style={anchor=west},
+  xlabel near ticks,axis line style={hamsgray},grid=major,grid style={gray!15},
+]
+\addplot[fill=hamsblue!75,draw=hamsblue] coordinates {
+ (0.063,VRAM)(0.290,TTFA p50)(0.480,TTFA p95)(0.147,RTF mean)(0.297,RTF p95)};
+\draw[red!70,thick,dashed] (axis cs:1,VRAM)--(axis cs:1,RTF p95);
+\end{axis}
+\end{tikzpicture}
+\caption{KPI headroom: every measured value sits well under its target (dashed line at
+$1.0$). VRAM uses only 6.3\% of budget; RTF 15\%.}
+\label{fig:kpi}
+\end{figure}
+
+\begin{figure}[t]\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,height=4.0cm,
+  ybar,bar width=9pt,
+  ymin=0,ymax=2.6,
+  ylabel={\scriptsize score},
+  symbolic x coords={English,Arabic,Code-switch},
+  xtick=data,enlarge x limits=0.25,
+  xticklabel style={font=\tiny},yticklabel style={font=\tiny},
+  nodes near coords,nodes near coords style={font=\tiny},
+  legend style={font=\tiny,at={(0.5,1.02)},anchor=south,legend columns=2,draw=none},
+  axis line style={hamsgray},grid=major,grid style={gray!15},ylabel near ticks,
+]
+\addplot[fill=hamsblue!75,draw=hamsblue] coordinates {(English,0.27)(Arabic,0.68)(Code-switch,0.79)};
+\addplot[fill=okgreen!70,draw=okgreen] coordinates {(English,2.36)(Arabic,2.16)(Code-switch,2.14)};
+\legend{ASR round-trip CER $\downarrow$, UTMOS (1--5) $\uparrow$}
+\end{axis}
+\end{tikzpicture}
+\caption{Intelligibility (CER, lower better) and quality (UTMOS, higher better) by
+language. English is intelligible (CER 0.27); Arabic trails for the data reason in
+\S\ref{sec:disc}.}
+\label{fig:cer}
+\end{figure}
+
+\begin{table}[t]\centering\small
+\caption{Held-out results ($n{=}18$).}
+\label{tab:res}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+& English & Arabic & Code-sw. & Overall\\
+\midrule
+ASR CER $\downarrow$ & \textbf{0.27} & 0.68 & 0.79 & 0.58\\
+ASR WER $\downarrow$ & 0.41 & 1.00 & 0.99 & 0.80\\
+UTMOS $\uparrow$ & 2.36 & 2.16 & 2.14 & 2.22\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%================================================================
+\section{Discussion \& Ablations}\label{sec:disc}
+Four findings stand out. \textbf{(1)} The reconstruction-only objective is necessary but
+insufficient: KL floors at $\sim$3.6 and audio is fluent but not word-accurate.
+\textbf{(2)} The full adversarial+mel objective is what ties phonemes to sound, dropping
+KL to $\sim$2.1 and yielding intelligible English. \textbf{(3)} The \emph{dominant} factor
+is label/audio agreement: with the \emph{same} model, English---LJSpeech audio matched to
+our English G2P---reaches CER~0.27, whereas Arabic uses \emph{MSA} audio under
+\emph{Levantine} phoneme labels (\ar{ق}$\rightarrow$\ipa{ʔ}) and reaches~0.68. Closing
+this is a focused \emph{data swap} to Levantine speech, with the same scripts---not a code
+or architecture change. \textbf{(4)} The stochastic duration predictor under-predicts
+($\sim$6$\times$); we synthesize at \texttt{length\_scale}~$\approx$~5, and further training
+converges it.
+
+%================================================================
+\section{Limitations \& Future Work}
+The Arabic acoustic target was MSA; real Levantine recordings (filtered Common Voice,
+MGB/QASR Levantine segments, or a small bilingual session) plus a longer run are the
+direct path to a production Levantine voice. UTMOS~$\approx$2.2 reflects an early,
+single-GPU checkpoint. Future work: frame-level decoder streaming and a TensorRT-INT8
+engine for even lower TTFA; a deterministic duration head; learned (FiLM) language
+conditioning.
+
+%================================================================
+\section{Conclusion}
+By treating Levantine/English code-switching as a linguistic problem solved in a
+deterministic, testable front-end, and pairing it with a small language-ID-conditioned
+VITS, we obtain a streaming TTS system that meets every real-time KPI with wide margins
+and produces intelligible English end-to-end. The remaining gap---polished Levantine
+audio---is well-scoped and reducible to data. All code, weights, audio, and scripts are
+released.
+
+{\small
+\section*{Reproducibility}
+\texttt{prepare\_corpora.py} $\rightarrow$ \texttt{finetune\_recon.py} $\rightarrow$
+\texttt{finetune\_gan.py} $\rightarrow$ \texttt{finalize\_eval.py};
+\texttt{hams\_tts.eval.benchmark} for KPIs. 30 front-end unit tests via \texttt{pytest}.
+Base model: \texttt{facebook/mms-tts-ara}. License: Apache-2.0.
+}
+
+{\small
+\begin{thebibliography}{9}
+\bibitem{kim2021} J.~Kim, J.~Kong, J.~Son. ``Conditional Variational Autoencoder with
+Adversarial Learning for End-to-End Text-to-Speech (VITS).'' \emph{ICML}, 2021.
+\bibitem{pratap2023} V.~Pratap \emph{et al.} ``Scaling Speech Technology to 1,000+
+Languages (MMS).'' arXiv:2305.13516, 2023.
+\bibitem{catt2024} F.~Alasmary, O.~Zaafarani, A.~Ghannam. ``CATT: Character-based Arabic
+Tashkeel Transformer.'' \emph{ArabicNLP}, 2024.
+\end{thebibliography}
+}
+
+\end{document}

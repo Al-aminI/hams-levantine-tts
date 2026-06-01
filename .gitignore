@@ -26,6 +26,14 @@ data/corpora/
 samples/eval/
 samples/mos/
 
+# LaTeX intermediates (keep paper.tex + paper.pdf)
+*.aux
+*.out
+*.bbl
+*.blg
+*.toc
+*.synctex.gz
+
 # os / editor
 .DS_Store
 .idea/

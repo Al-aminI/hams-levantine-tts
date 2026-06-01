@@ -12,7 +12,7 @@ KPIs targeted & **measured on an RTX 3090**: VRAM **193 MB** · TTFA **87 / 144 
 
 > **Thesis.** Code-switching is a *linguistics* problem, not an acoustic one. All Levantine/code-switch intelligence lives in a deterministic, **unit-tested** text→IPA front-end; a tiny non-autoregressive **VITS** does fast waveform generation. One shared IPA space + a **language-ID embedding** ⇒ seamless switches with no engine hand-off. This single design choice is what makes the strict latency/VRAM KPIs reachable *and* keeps the dialect logic transparent and testable.
 
-This README is **comprehensive** — architecture, the linguistic engine, data, every training stage, ablations, the engineering log, measured results, and audio you can play. The 3–6-page design doc is in [`design_doc/DESIGN.md`](design_doc/DESIGN.md) (also `.pdf`/`.html`).
+This README is **comprehensive** — architecture, the linguistic engine, data, every training stage, ablations, the engineering log, measured results, and audio you can play. The design doc is in [`design_doc/DESIGN.md`](design_doc/DESIGN.md) (also `.pdf`/`.html`), and a **conference-style paper** with TikZ diagrams + result graphs is in [`design_doc/paper.pdf`](design_doc/paper.pdf) ([source](design_doc/paper.tex)).
 
 ---
 
@@ -193,7 +193,7 @@ The pipeline is validated end-to-end on a short, single-GPU run: **English round
 | 2 | Code repo | this repo (train, inference, server, benchmark, Pipecat, 30 tests) |
 | 3 | 3 sample WAVs (AR / EN / code-switched) | [`samples/neural/`](samples/neural/) + HF |
 | 4 | Demo video (≤ 3 min) | record the live `espeak` streaming demo + play the `samples/neural/` clips |
-| 5 | Design doc (3–6 pp) | [`design_doc/DESIGN.pdf`](design_doc/DESIGN.pdf) |
+| 5 | Design doc (3–6 pp) | [`design_doc/DESIGN.pdf`](design_doc/DESIGN.pdf) + conference paper [`design_doc/paper.pdf`](design_doc/paper.pdf) |
 
 ## License
 Apache-2.0. Base model `facebook/mms-tts-ara` and corpora (Arabic Speech Corpus: CC-BY; LJSpeech: public domain) retain their own licenses.
