@@ -1,0 +1,12 @@
+{
+  "backend": "espeak",
+  "n_measurements": 54,
+  "ttfa_ms_p50": 48.9,
+  "ttfa_ms_p95": 182.0,
+  "rtf_mean": 0.0205,
+  "rtf_p95": 0.0409,
+  "peak_vram_mb": 39.3,
+  "vram_source": "CPU-RSS-proxy(NOT-gpu-vram)",
+  "aggregate_rtf": 0.0222,
+  "output_sample_rate": 24000
+}

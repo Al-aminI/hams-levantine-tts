@@ -1,0 +1,12 @@
+{
+  "backend": "onnx",
+  "n_measurements": 90,
+  "ttfa_ms_p50": 193.3,
+  "ttfa_ms_p95": 369.0,
+  "rtf_mean": 0.1896,
+  "rtf_p95": 0.2565,
+  "peak_vram_mb": 0.0,
+  "vram_source": "cuda.max_memory_allocated",
+  "aggregate_rtf": 0.1921,
+  "output_sample_rate": 24000
+}

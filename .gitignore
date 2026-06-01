@@ -1,0 +1,33 @@
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# model artifacts / checkpoints (publish via HF, not git)
+checkpoints/
+artifacts/
+*.onnx
+*.plan
+*.pt
+*.ckpt
+
+# data (corpora are large; keep only the committed eval set)
+data/manifests/
+data/corpora/
+
+# espeak bulk renders + MOS forms (we keep the NEURAL samples in samples/neural/ and the
+# results JSONs — asr/utmos/benchmark — which carry the real measured numbers)
+samples/eval/
+samples/mos/
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/
+*.log

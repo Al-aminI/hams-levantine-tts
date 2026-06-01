@@ -1,0 +1,10 @@
+{
+  "checkpoint": "/workspace/ckpt_gan/final",
+  "length_scale": 5.0,
+  "asr": {
+    "error": "Library libcublas.so.12 is not found or cannot be loaded"
+  },
+  "quality": {
+    "error": "no quality metric available (install eval extra): cannot import name 'dnsmos' from 'speechmos' (/root/.cache/torch/hub/tarepan_SpeechMOS_main/speechmos/__init__.py)"
+  }
+}

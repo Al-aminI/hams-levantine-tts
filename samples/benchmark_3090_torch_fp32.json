@@ -1,0 +1,12 @@
+{
+  "backend": "torch",
+  "n_measurements": 90,
+  "ttfa_ms_p50": 86.8,
+  "ttfa_ms_p95": 143.5,
+  "rtf_mean": 0.0437,
+  "rtf_p95": 0.0886,
+  "peak_vram_mb": 192.7,
+  "vram_source": "cuda.max_memory_allocated",
+  "aggregate_rtf": 0.0433,
+  "output_sample_rate": 24000
+}

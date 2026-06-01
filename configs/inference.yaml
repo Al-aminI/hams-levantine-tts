@@ -1,0 +1,31 @@
+# Inference / serving config.
+
+backend: onnx                  # espeak (dev) | onnx | tensorrt | torch
+model_path: artifacts/hams_vits.plan   # .onnx | .plan | checkpoint dir
+output_sample_rate: 24000
+speaker_id: 0
+
+# streaming / latency
+chunker:
+  first_chunk_max_chars: 36     # small first phrase -> low TTFA
+  max_chars: 160
+  min_chars: 8
+
+# VITS sampling (length_scale<1 speeds speech; helps RTF)
+scales:
+  noise_scale: 0.667
+  length_scale: 1.0
+  noise_scale_w: 0.8
+
+# text front-end
+frontend:
+  diacritizer_backend: auto     # auto -> camel/catt if present, else espeak fallback
+  default_lang: en              # language for ambiguous neutral spans
+  back_emphatics: true
+  epenthesize: true
+
+server:
+  host: 0.0.0.0
+  port: 8000
+  ws_impl: wsproto
+  max_text_chars: 2000

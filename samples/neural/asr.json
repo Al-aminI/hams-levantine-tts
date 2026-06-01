@@ -1,0 +1,22 @@
+{
+  "pure_arabic": {
+    "n": 6,
+    "cer": 0.681,
+    "wer": 1.0
+  },
+  "pure_english": {
+    "n": 6,
+    "cer": 0.27,
+    "wer": 0.415
+  },
+  "code_switched": {
+    "n": 6,
+    "cer": 0.785,
+    "wer": 0.985
+  },
+  "overall": {
+    "n": 18,
+    "cer": 0.579,
+    "wer": 0.8
+  }
+}

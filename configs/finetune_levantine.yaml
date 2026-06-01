@@ -1,0 +1,45 @@
+# Fine-tuning config for HamsVITS (Levantine + English code-switching).
+# Consumed by `python -m hams_tts.training.finetune --config configs/finetune_levantine.yaml`.
+
+base_model_id: facebook/mms-tts-ara          # VITS Arabic base (bootstrap)
+train_manifest: data/manifests/train.phon.jsonl
+eval_manifest:  data/manifests/eval.phon.jsonl
+output_dir: checkpoints/hams_vits_levantine
+num_languages: 4          # PAD / AR / EN / NEUTRAL
+num_speakers: 1           # set >1 for multi-speaker conditioning
+sample_rate: 22050
+
+# optimisation
+learning_rate: 2.0e-4
+disc_learning_rate: 2.0e-4
+batch_size: 16
+grad_accum: 2
+max_steps: 60000
+warmup_steps: 1000
+weight_decay: 0.01
+fp16: true
+seg_size: 8192            # waveform slice for the decoder/GAN step
+
+# parameter-efficient fine-tuning
+use_lora: true
+lora_rank: 16
+lora_alpha: 32
+lora_targets: [q_proj, k_proj, v_proj, out_proj]
+freeze_decoder: true      # freeze HiFi-GAN vocoder
+freeze_flow: true         # freeze normalizing flow -> adapt phonetics/prosody only
+
+# loss weights (canonical VITS)
+c_mel: 45.0
+c_kl: 1.0
+c_dur: 1.0
+c_fm: 2.0
+
+# data composition (fractions of each training batch source)
+mix_levantine: 0.5        # Levantine acoustic core (the target dialect)
+mix_msa: 0.2              # MSA TTS (ClArTTS/ASC) for phoneme coverage/stability
+mix_english: 0.2          # LJSpeech/LibriTTS so the SAME model speaks English
+mix_codeswitch: 0.1       # concatenated + spliced code-switch augmentation
+
+log_every: 50
+save_every: 5000
+seed: 1234

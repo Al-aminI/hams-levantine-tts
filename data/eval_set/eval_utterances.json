@@ -1,0 +1,24 @@
+{
+  "description": "Held-out evaluation set for the Hams Levantine/English code-switching TTS. 18 utterances spanning pure Levantine Arabic, pure English, and code-switched. Arabic is provided diacritised so the rule-based Levantine G2P (high-quality path) is exercised; in production the diacritiser (CATT/CAMeL) restores tashkeel automatically. `levantine_tokens` flags dialect-specific realisations to check in pronunciation-accuracy notes.",
+  "sample_rate_reference": 24000,
+  "utterances": [
+    {"id": "ar_01", "category": "pure_arabic", "text": "مَرحَبا، كِيفَك؟ إن شاء الله مْنيح.", "gloss": "Hello, how are you? Hopefully well.", "levantine_tokens": ["كِيفَك→kiːfak", "مْنيح→mniːħ"]},
+    {"id": "ar_02", "category": "pure_arabic", "text": "بَدّي روح عَ السّوق وَ إشتْري خُبِز وَ لَبَن.", "gloss": "I want to go to the market and buy bread and milk.", "levantine_tokens": ["بَدّي→biddi", "عَ→ʕa", "السّوق→issuːʔ (ق→ʔ + sun-letter)"]},
+    {"id": "ar_03", "category": "pure_arabic", "text": "شو عَم تِعمِل هَلَّق؟", "gloss": "What are you doing right now?", "levantine_tokens": ["شو→ʃuː", "عَم→ʕam", "هَلَّق→hallaʔ (ق→ʔ)"]},
+    {"id": "ar_04", "category": "pure_arabic", "text": "الجَوّ كْتير حِلو اليَوم بْبيروت.", "gloss": "The weather is very nice today in Beirut.", "levantine_tokens": ["الجَوّ→ʒaww (ج→ʒ)", "كْتير→ktiːr", "اليَوم→joːm (aw→oː)"]},
+    {"id": "ar_05", "category": "pure_arabic", "text": "ما تِنسى تِحْكيلي لَمّا تُوصَل عَ البيت.", "gloss": "Don't forget to tell me when you get home.", "levantine_tokens": ["البيت→beːt (ay→eː)"]},
+    {"id": "ar_06", "category": "pure_arabic", "text": "هَيدا أَحسَن مَطعَم بِالبَلَد، جَرِّبو.", "gloss": "This is the best restaurant in town, try it.", "levantine_tokens": ["هَيدا→heːda", "مَطعَم→matˤʕam (emphatic)", "جَرِّبو→ʒarribu (ج→ʒ)"]},
+    {"id": "en_01", "category": "pure_english", "text": "Hello, how are you doing today?", "gloss": "", "levantine_tokens": []},
+    {"id": "en_02", "category": "pure_english", "text": "Please confirm your appointment for tomorrow at nine.", "gloss": "", "levantine_tokens": []},
+    {"id": "en_03", "category": "pure_english", "text": "I would like to book a flight from Beirut to London.", "gloss": "", "levantine_tokens": []},
+    {"id": "en_04", "category": "pure_english", "text": "Streaming audio with very low latency is genuinely challenging.", "gloss": "", "levantine_tokens": []},
+    {"id": "en_05", "category": "pure_english", "text": "Thank you for calling. How can I help you today?", "gloss": "", "levantine_tokens": []},
+    {"id": "en_06", "category": "pure_english", "text": "The model runs in real time on a single L4 GPU.", "gloss": "", "levantine_tokens": []},
+    {"id": "cs_01", "category": "code_switched", "text": "مَرحَبا، أنا Hams، your voice assistant.", "gloss": "Hello, I am Hams, your voice assistant.", "levantine_tokens": ["boundary AR→EN after a comma"]},
+    {"id": "cs_02", "category": "code_switched", "text": "بَدّي إحجِز flight من بيروت to London بُكرا الساعة 9.", "gloss": "I want to book a flight from Beirut to London tomorrow at nine.", "levantine_tokens": ["بَدّي→biddi", "9→تِسعة", "two AR↔EN switches"]},
+    {"id": "cs_03", "category": "code_switched", "text": "الـ meeting الساعة 3:30، please don't be late.", "gloss": "The meeting is at 3:30, please don't be late.", "levantine_tokens": ["3:30→تْلاتة وْتْلاتين", "article الـ before English noun"]},
+    {"id": "cs_04", "category": "code_switched", "text": "هَيدا المَشروع عَن الـ TTS، it's really exciting.", "gloss": "This project is about TTS, it's really exciting.", "levantine_tokens": ["TTS→spelled out EN", "هَيدا→heːda"]},
+    {"id": "cs_05", "category": "code_switched", "text": "عَم بَشتَغِل عَ الـ deployment عَ NVIDIA L4 هَلَّق.", "gloss": "I'm working on the deployment on NVIDIA L4 right now.", "levantine_tokens": ["هَلَّق→hallaʔ (ق→ʔ)", "L4→ˈɛl fˈɔːɹ"]},
+    {"id": "cs_06", "category": "code_switched", "text": "إذا في عندَك أي question، اسأَلني بأي وَقت، okay?", "gloss": "If you have any question, ask me any time, okay?", "levantine_tokens": ["وَقت→waʔt (ق→ʔ)", "أي→ʔaj"]}
+  ]
+}

@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hams-tts"
+version = "0.1.0"
+description = "Low-latency code-switching (Levantine Arabic / English) streaming TTS"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Alamin Ibrahim" }]
+keywords = ["tts", "arabic", "levantine", "code-switching", "streaming", "vits", "pipecat"]
+
+# Core deps are CPU-only and power the text front-end + client tooling. Heavy/GPU
+# pieces are isolated in optional extras so the front-end installs and tests anywhere.
+dependencies = [
+    "num2words>=0.5.13",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "websockets>=12,<14",   # >=14 breaks uvicorn's WS handshake (HTTP 403)
+    "wsproto>=1.2",
+    "soundfile>=0.12",
+    "pydantic>=2.6",
+]
+gpu = [
+    "torch>=2.2",
+    "transformers>=4.41",
+    "onnx>=1.16",
+    "onnxruntime-gpu>=1.18",
+    "scipy>=1.11",
+]
+train = [
+    "torch>=2.2",
+    "transformers>=4.41",
+    "datasets>=2.19",
+    "accelerate>=0.30",
+    "peft>=0.11",
+    "tensorboard>=2.16",
+    "librosa>=0.10",
+]
+eval = [
+    "faster-whisper>=1.0",
+    "jiwer>=3.0",
+    "librosa>=0.10",
+    "soundfile>=0.12",
+    "speechmos>=0.0.5",   # UTMOS22 / DNSMOS wrapper
+]
+pipecat = [
+    "pipecat-ai>=0.0.40",
+]
+diacritize = [
+    "camel-tools>=1.5",
+]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+hams-tts-server = "hams_tts.server.app:main"
+hams-tts-bench = "hams_tts.eval.benchmark:main"
+hams-tts-phonemize = "hams_tts.text.frontend:_cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
