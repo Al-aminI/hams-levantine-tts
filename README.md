@@ -192,7 +192,7 @@ The pipeline is validated end-to-end on a short, single-GPU run: **English round
 | 1 | Model weights | 🤗 https://huggingface.co/AlaminI/hams-levantine-tts |
 | 2 | Code repo | this repo (train, inference, server, benchmark, Pipecat, 30 tests) |
 | 3 | 3 sample WAVs (AR / EN / code-switched) | [`samples/neural/`](samples/neural/) + HF |
-| 4 | Demo video (≤ 3 min) | storyboard in [`scripts/demo_video_script.md`](scripts/demo_video_script.md) |
+| 4 | Demo video (≤ 3 min) | record the live `espeak` streaming demo + play the `samples/neural/` clips |
 | 5 | Design doc (3–6 pp) | [`design_doc/DESIGN.pdf`](design_doc/DESIGN.pdf) |
 
 ## License
