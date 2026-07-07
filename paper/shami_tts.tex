@@ -1,5 +1,5 @@
-% Hams v2 — Production-grade Levantine/English code-switching TTS.
-% Compile: tectonic -X compile hams_v2.tex   (XeTeX; uses system Arial + Segoe UI)
+% Shami-TTS — Production-grade Levantine/English code-switching TTS.
+% Compile: tectonic -X compile shami_tts.tex   (XeTeX; uses system Arial + Segoe UI)
 \documentclass[10pt,twocolumn]{article}
 \usepackage[letterpaper,margin=0.72in,columnsep=0.26in]{geometry}
 
@@ -17,21 +17,21 @@
 \usepackage{enumitem}
 \setlist{nosep,leftmargin=1.2em}
 
-\definecolor{hamsblue}{RGB}{40,70,150}
-\definecolor{hamsgray}{RGB}{90,90,95}
+\definecolor{themeblue}{RGB}{40,70,150}
+\definecolor{themegray}{RGB}{90,90,95}
 \definecolor{okgreen}{RGB}{22,120,55}
-\captionsetup{font=small,labelfont={bf,color=hamsblue}}
-\usepackage[colorlinks=true,linkcolor=hamsblue,citecolor=hamsblue,urlcolor=hamsblue]{hyperref}
-\titleformat{\section}{\large\bfseries\color{hamsblue}}{\thesection}{0.5em}{}
-\titleformat{\subsection}{\normalsize\bfseries\color{hamsblue!85!black}}{\thesubsection}{0.5em}{}
+\captionsetup{font=small,labelfont={bf,color=themeblue}}
+\usepackage[colorlinks=true,linkcolor=themeblue,citecolor=themeblue,urlcolor=themeblue]{hyperref}
+\titleformat{\section}{\large\bfseries\color{themeblue}}{\thesection}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries\color{themeblue!85!black}}{\thesubsection}{0.5em}{}
 \titleformat{\subsubsection}{\small\bfseries\color{black}}{\thesubsubsection}{0.5em}{}
 \setlength{\parskip}{1.6pt}
 \newcommand{\best}[1]{\textbf{#1}}
 
-\title{\vspace{-3.5em}\bfseries Hams v2: A Production-Grade Streaming TTS for
+\title{\vspace{-3.5em}\bfseries Shami-TTS: A Production-Grade Streaming TTS for
 Levantine Arabic\,/\,English Code-Switching\\[0.2em]
 \large via Dialectal Front-End, Deterministic Duration, and Anti-Aliased Neural Vocoding}
-\author{Alamin Ibrahim\\ \small Tushe Language Research \\ \small \texttt{https://github.com/Al-aminI/hams-levantine-tts}}
+\author{Tushe Language Research Team\\ \small \texttt{https://huggingface.co/Tushe/shami-tts}}
 \date{}
 
 \begin{document}
@@ -39,7 +39,7 @@ Levantine Arabic\,/\,English Code-Switching\\[0.2em]
 
 \begin{abstract}
 \noindent
-We present \textbf{Hams v2}, a low-latency, streaming text-to-speech (TTS) system for
+We present \textbf{Shami-TTS}, a low-latency, streaming text-to-speech (TTS) system for
 Levantine Arabic that speaks fluent, natural code-switched Arabic\,/\,English. Starting
 from a single-GPU VITS baseline whose synthesized Levantine speech was intelligible only
 in principle (ASR round-trip character error rate, CER, of \(0.75\)), we introduce a
@@ -52,7 +52,7 @@ pronounce; (ii) a \emph{deterministic duration head} that replaces VITS's stocha
 duration predictor, eliminating a \(3\times\) global time-stretch that had flattened prosody
 into a robotic monotone; (iii) a \emph{24\,kHz} decoder fine-tune for full-bandwidth
 fidelity; and (iv) an \emph{anti-aliased BigVGAN vocoder} that removes the residual
-``through-a-microphone'' breathiness characteristic of HiFi-GAN. On a held-out set spanning
+high-frequency breathiness characteristic of HiFi-GAN. On a held-out set spanning
 pure Levantine, pure English, and code-switched utterances, Levantine CER drops from
 \(0.75\) to \best{0.11} (\(-86\%\)) and word error rate (WER) from \(0.99\) to \best{0.35},
 while synthesis stays real-time (RTF~\(\approx\!0.09\), \(\sim\!11\times\) faster than
@@ -74,7 +74,7 @@ listener uses to judge nativeness --- the realization of \ar{ق} as a glottal st
 natively bilingual, and that runs in real time on commodity hardware, does not exist off the
 shelf.
 
-The Hams~v1 baseline established a promising design: treat code-switching as a
+A prior single-GPU baseline established a promising design: treat code-switching as a
 \emph{linguistic} problem solved in a deterministic front-end, and drive a small,
 language-ID-conditioned VITS acoustic model~\cite{vits} through a shared IPA inventory. It
 met every real-time key-performance indicator but produced Levantine audio that was, in the
@@ -84,8 +84,8 @@ Arabic CER near \(0.7\). Even with matched data, three further obstacles stood b
 system and production quality: (1) the stochastic duration predictor systematically
 under-predicted durations by \(\sim\!3\times\), forcing a global \texttt{length\_scale}
 stretch that destroys prosody; (2) the 16\,kHz backbone discards everything above 8\,kHz,
-sacrificing the ``air'' of a real recording; and (3) the HiFi-GAN decoder leaves a
-broadband, phase-related breathiness that magnitude-domain losses cannot remove.
+sacrificing the high-frequency detail of a real recording; and (3) the HiFi-GAN decoder
+leaves a broadband, phase-related breathiness that magnitude-domain losses cannot remove.
 
 This paper closes all four gaps. Our contributions are:
 \begin{enumerate}
@@ -100,7 +100,7 @@ mean-squared error on monotonic-alignment durations, giving natural rhythm at
 (feature-matching up-weighting, discriminator persistence across warm-starts, and a
 multi-resolution STFT loss) that recover full-bandwidth fidelity (\S\ref{sec:fidelity}).
 \item A drop-in \textbf{BigVGAN}~\cite{bigvgan} vocoder integration (\S\ref{sec:bigvgan})
-that removes the residual vocoder ``air,'' bringing texture to the level of the reference
+that removes the residual vocoder breathiness, bringing texture to the level of the reference
 source at real-time speed.
 \end{enumerate}
 Every claim is supported by ASR round-trip intelligibility, objective spectral analysis, and
@@ -134,7 +134,7 @@ post-processing.
 
 \textbf{Code-switching TTS} is typically approached either acoustically (mixed-language
 data) or linguistically (a shared phonetic space). We take the latter view, extending
-Hams~v1's shared-IPA design with a corrected dialectal front-end.
+the prior baseline's shared-IPA design with a corrected dialectal front-end.
 
 \section{Background: VITS}
 VITS models speech \(x\) and text \(c\) with a conditional VAE. A posterior encoder maps a
@@ -153,11 +153,11 @@ inherited.
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.96\textwidth]{../paper_assets/figs/fig_pipeline.pdf}
-\caption{\textbf{Hams v2 pipeline.} Text of any language mix is normalized and segmented,
+\caption{\textbf{Shami-TTS pipeline.} Text of any language mix is normalized and segmented,
 then each span is diacritized (Arabic) or phonemized (English) into a \emph{shared} IPA
-inventory with a parallel language-ID stream. The HamsVITS acoustic model (with the new
+inventory with a parallel language-ID stream. The ShamiVITS acoustic model (with the new
 deterministic duration head) produces 24\,kHz audio via its native HiFi-GAN decoder; for the
-highest fidelity we re-vocode the mel through BigVGAN, which removes the residual phase/air.
+highest fidelity we re-vocode the mel through BigVGAN, which removes the residual phase artifacts.
 Both decoder paths are released.}
 \label{fig:pipeline}
 \end{figure*}
@@ -167,7 +167,7 @@ Figure~\ref{fig:pipeline} shows the full system. All dialectal and code-switch i
 lives in a deterministic, unit-tested front-end (\S\ref{sec:frontend}) that emits two
 parallel streams: phoneme IDs over a shared 88-symbol IPA inventory, and a per-token
 language ID (\textsc{ar}\,/\,\textsc{en}\,/\,\textsc{neutral}). The acoustic model
-(\S\ref{sec:duration}--\ref{sec:fidelity}) is a 24\,kHz HamsVITS with a deterministic
+(\S\ref{sec:duration}--\ref{sec:fidelity}) is a 24\,kHz ShamiVITS with a deterministic
 duration head. The vocoder is either the native HiFi-GAN decoder or a drop-in BigVGAN
 (\S\ref{sec:bigvgan}). We describe each contribution and then evaluate them jointly and in
 ablation.
@@ -258,7 +258,7 @@ simply more intelligible when it is paced naturally.
 \begin{subfigure}{0.49\columnwidth}\includegraphics[width=\linewidth]{../paper_assets/figs/fig_texture.pdf}\caption{}\label{fig:texture}\end{subfigure}
 \caption{(a) The deterministic duration head predicts near-correct durations at
 \texttt{length\_scale}\(=\!1\) (ratio \(0.97\)); the stochastic baseline needs a \(3.2\times\)
-stretch. (b) High-frequency spectral flatness (a buzz/air proxy): both our decoders sit at the
+stretch. (b) High-frequency spectral flatness (a buzz/breathiness proxy): both our decoders sit at the
 reference level; BigVGAN's advantage over HiFi-GAN is in \emph{phase}, which this
 magnitude-domain metric does not capture.}
 \end{figure}
@@ -299,7 +299,7 @@ motivating a vocoder change.
 
 \section{Anti-Aliased Vocoding with BigVGAN}
 \label{sec:bigvgan}
-The residual ``air-through-a-microphone'' quality is a \emph{phase/aliasing} artifact of
+The residual high-frequency breathiness is a \emph{phase/aliasing} artifact of
 HiFi-GAN that magnitude losses cannot fix. BigVGAN~\cite{bigvgan} attacks exactly this with
 Snake activations and anti-aliased resampling. Its pretrained
 \texttt{bigvgan\_v2\_24khz\_100band\_256x} is an exact match for our pipeline (24\,kHz, hop
@@ -309,7 +309,7 @@ Because our magnitude spectrum already matches the reference, we integrate BigVG
 \emph{re-vocoding}: compute a mel from the acoustic model's output and let BigVGAN regenerate
 the waveform. The mel preserves our (correct) magnitude while discarding HiFi-GAN's flawed
 phase; BigVGAN synthesizes clean phase and excitation. This requires \emph{no} fine-tuning
-of BigVGAN. Informal and objective evaluation (\S\ref{sec:results}) confirm the ``air'' is
+of BigVGAN. Informal and objective evaluation (\S\ref{sec:results}) confirm the breathiness is
 removed and texture reaches the reference level, at a real-time factor still far below one
 (the added vocoder RTF is \(\approx\!0.07\)). We release both the native HiFi-GAN model (for
 minimal-dependency, single-model deployment) and the BigVGAN pipeline (for maximum fidelity).
@@ -343,7 +343,7 @@ evaluated here we use one speaker (``Badr,'' \(\sim\!6.2\)\,h after filtering to
 \([0.8,12]\)\,s clips), phonemized offline through the v2 front-end. A 40-utterance held-out
 set spans pure Levantine and code-switching.
 
-\textbf{Model \& training.} HamsVITS has \(\sim\!36\)M parameters; the HiFi-GAN
+\textbf{Model \& training.} ShamiVITS has \(\sim\!36\)M parameters; the HiFi-GAN
 discriminator \(47\)M; BigVGAN \(112\)M. Training uses bf16 autocast, AdamW
 (\(\beta\!=\!0.8,0.99\)), batch 12--16, \texttt{seg\_size} 8192--12288, on a single RTX~3060
 (12\,GB); loss weights \(c_{\text{mel}}\!=\!45\), \(c_{\text{kl}}\!=\!1\),
@@ -362,7 +362,7 @@ duration-calibrated \texttt{length\_scale} and scored identically.
 \begin{table*}[t]
 \centering\small
 \caption{Main results on the held-out set (ASR round-trip via Whisper large-v3; lower is
-better). Ours is the single-speaker HamsVITS with the deterministic duration head, 24\,kHz,
+better). Ours is the single-speaker ShamiVITS with the deterministic duration head, 24\,kHz,
 and the texture recipe; ``+BigVGAN'' re-vocodes its output. Best per column in \best{bold}.}
 \label{tab:main}
 \begin{tabular}{lcc cc cc cc}
@@ -383,7 +383,7 @@ Ours, + BigVGAN vocoder                        & \best{0.106} & \best{0.347} & 0
 \best{0.106} (\(-86\%\)) and WER from \(0.993\) to \best{0.347} (\(-65\%\)), while overall CER
 drops to \(0.31\). Both our systems run in real time (RTF \(\leq\!0.09\), i.e.\
 \(\geq\!11\times\) faster than real time). BigVGAN further improves pure-Levantine CER and WER
-over HiFi-GAN and, more importantly, removes the perceptual ``air'' (below).
+over HiFi-GAN and, more importantly, removes the perceptual breathiness (below).
 
 \textbf{Ablation.} Figure~\ref{fig:cer} traces CER across the contribution sequence. The
 error drops in two clear moves --- matched Levantine data\,+\,labels
@@ -435,7 +435,7 @@ sound robotic and score poorly purely because a mis-calibrated duration predicto
 prosody-flattening global stretch. A deterministic head is a small, low-risk change with an
 outsized effect. Second, \emph{magnitude metrics saturate before perceptual quality does}:
 our spectral-flatness and average-spectrum measures declared parity with the reference while
-listeners still heard a vocoder ``air.'' The defect was phase, and only an
+listeners still heard vocoder breathiness. The defect was phase, and only an
 anti-aliased vocoder (BigVGAN) closed it. Practitioners chasing the last increment of
 naturalness should treat magnitude-domain losses/metrics as necessary but not sufficient and
 budget for a phase-aware vocoder.
@@ -459,7 +459,7 @@ speakers; the single-speaker backbone lacks speaker-conditioning layers). Finall
 inherit.
 
 \section{Conclusion}
-Hams~v2 turns a promising but robotic Levantine/English code-switching TTS baseline into a
+Shami-TTS turns a promising but robotic Levantine/English code-switching TTS baseline into a
 production-grade, real-time system on a single consumer GPU. Four targeted changes ---
 a dialectal front-end with automatic diacritization and de-desinentialization, a deterministic
 duration head, a 24\,kHz decoder with an accumulated-adversarial texture recipe, and an

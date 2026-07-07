@@ -65,3 +65,4 @@ data/corpora/
 eval_out/
 data/manifests_smoke/
 data/lahgtna/
+paper/_p*.png
