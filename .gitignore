@@ -39,3 +39,29 @@ samples/mos/
 .idea/
 .vscode/
 *.log
+
+# --- v2 additions ---
+vendor/                    # cloned BigVGAN + tectonic binary (fetch separately)
+hf_release/                # HF upload staging (large checkpoint)
+paper_assets/synth/        # per-system synthesized wavs
+paper/*.aux
+paper/*.log
+paper/fonttest.*
+# listen pages (audio is large; regenerate with scripts)
+samples_listen/
+samples_texture/
+samples_texture_ab/
+samples_bigvgan/
+samples_final/
+samples_robustness/
+# extracted corpora + big manifests (fetch from HF dataset)
+data/lahgtna/
+data/lahgtna_24k/
+data/manifests_24k/
+data/manifests_refined/
+data/manifests_all_refined/
+data/manifests/
+data/corpora/
+eval_out/
+data/manifests_smoke/
+data/lahgtna/

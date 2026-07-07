@@ -1,0 +1,88 @@
+{
+  "baseline": {
+    "vocoder": "hifigan",
+    "length_scale": 3.23,
+    "sr": 16000,
+    "dur_ratio": 0.742,
+    "flatness_ours": 0.337,
+    "flatness_ref": 0.431,
+    "rtf_acoustic": 0.0243,
+    "rtf_vocoder": 0.0,
+    "asr": {
+      "pure_levantine": {
+        "cer": 0.751,
+        "wer": 0.993,
+        "n": 20
+      },
+      "code_switching": {
+        "cer": 0.853,
+        "wer": 0.993,
+        "n": 20
+      },
+      "overall": {
+        "cer": 0.802,
+        "wer": 0.993,
+        "n": 40
+      }
+    }
+  },
+  "ours_hifigan": {
+    "vocoder": "hifigan",
+    "length_scale": 1.11,
+    "sr": 24000,
+    "dur_ratio": 0.97,
+    "flatness_ours": 0.49,
+    "flatness_ref": 0.488,
+    "rtf_acoustic": 0.0283,
+    "rtf_vocoder": 0.0,
+    "asr": {
+      "pure_levantine": {
+        "cer": 0.113,
+        "wer": 0.377,
+        "n": 20
+      },
+      "code_switching": {
+        "cer": 0.498,
+        "wer": 0.713,
+        "n": 20
+      },
+      "overall": {
+        "cer": 0.305,
+        "wer": 0.545,
+        "n": 40
+      }
+    }
+  },
+  "ours_bigvgan": {
+    "vocoder": "bigvgan",
+    "length_scale": 1.11,
+    "sr": 24000,
+    "dur_ratio": 0.966,
+    "flatness_ours": 0.506,
+    "flatness_ref": 0.488,
+    "rtf_acoustic": 0.0188,
+    "rtf_vocoder": 0.0659,
+    "asr": {
+      "pure_levantine": {
+        "cer": 0.106,
+        "wer": 0.347,
+        "n": 20
+      },
+      "code_switching": {
+        "cer": 0.556,
+        "wer": 0.806,
+        "n": 20
+      },
+      "overall": {
+        "cer": 0.331,
+        "wer": 0.576,
+        "n": 40
+      }
+    }
+  },
+  "_model": {
+    "vits_params_M": 35.3,
+    "bigvgan_params_M": 112,
+    "eval_clips": 40
+  }
+}

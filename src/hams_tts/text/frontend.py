@@ -70,10 +70,14 @@ class TextFrontend:
         default_lang: str = "en",
         back_emphatics: bool = True,
         epenthesize: bool = True,
+        dialectal_case_drop: bool = True,
     ) -> None:
         self.default_lang = default_lang
         self.back_emphatics = back_emphatics
         self.epenthesize = epenthesize
+        # Strip MSA case/mood endings (iʿrab) a MSA diacritiser restores but Levantine
+        # doesn't pronounce -- removes a residual label↔audio mismatch. See dialectal.py.
+        self.dialectal_case_drop = dialectal_case_drop
         # may be None on a CPU dev box -> Arabic uses the espeak fallback path
         self._diacritizer = get_diacritizer(diacritizer_backend)
         self.diacritizer_backend = diacritizer_backend
@@ -82,12 +86,17 @@ class TextFrontend:
     # -- Arabic span -> IPA, choosing the best available path --
     def _arabic_to_ipa(self, text: str) -> str:
         if is_already_diacritized(text):
-            return levantine_g2p(text, self.back_emphatics, self.epenthesize)
-        if self._diacritizer is not None:
+            diac = text
+        elif self._diacritizer is not None:
             diac = self._diacritizer(text)
-            return levantine_g2p(diac, self.back_emphatics, self.epenthesize)
-        # no diacritiser available and text is bare -> espeak MSA -> Levantine remap
-        return arabic_fallback_ipa(text, self.back_emphatics)
+        else:
+            # no diacritiser available and text is bare -> espeak MSA -> Levantine remap
+            return arabic_fallback_ipa(text, self.back_emphatics)
+        if self.dialectal_case_drop:
+            from .dialectal import strip_case_endings
+
+            diac = strip_case_endings(diac)
+        return levantine_g2p(diac, self.back_emphatics, self.epenthesize)
 
     def _span_to_ipa(self, span: Span) -> str:
         verbalized = verbalize(span.text, span.lang)

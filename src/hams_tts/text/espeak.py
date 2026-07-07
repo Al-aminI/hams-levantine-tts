@@ -47,9 +47,11 @@ def phonemize(text: str, voice: str = "en-us") -> str:
         [_ESPEAK, "-v", voice, "--ipa=1", "-q", "--", text],
         capture_output=True,
         text=True,
+        encoding="utf-8",   # espeak emits UTF-8 IPA; Windows default (cp1252) mangles it
+        errors="replace",
         timeout=30,
     )
-    raw = proc.stdout
+    raw = proc.stdout or ""
     raw = _PAREN.sub(" ", raw).translate(_ZW)
     # words: whitespace-separated; phonemes within a word: '_' separated
     words = []

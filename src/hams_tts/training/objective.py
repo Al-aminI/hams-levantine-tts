@@ -122,6 +122,25 @@ def mel_loss(y, y_hat, mel_fn, c_mel):
     return c_mel * F.l1_loss(mel_fn(y.squeeze(1)), mel_fn(y_hat.squeeze(1)))
 
 
+def multi_resolution_stft_loss(y, y_hat, configs):
+    """Spectral-convergence + log-magnitude L1 summed over several STFT resolutions
+    (Parallel WaveGAN). Supervises fine spectral detail at multiple time/freq scales the
+    single mel loss misses -> reduces HiFi-GAN's broadband 'air'/breathiness. fp32 in."""
+    if y.dim() == 3:
+        y = y.squeeze(1)
+    if y_hat.dim() == 3:
+        y_hat = y_hat.squeeze(1)
+    total = 0.0
+    for n_fft, hop, win in configs:
+        window = torch.hann_window(win, device=y.device)
+        Y = torch.stft(y, n_fft, hop, win, window, center=True, return_complex=True).abs()
+        Yh = torch.stft(y_hat, n_fft, hop, win, window, center=True, return_complex=True).abs()
+        sc = torch.norm(Y - Yh, p="fro") / (torch.norm(Y, p="fro") + 1e-7)         # spectral convergence
+        mag = F.l1_loss(torch.log(Yh + 1e-5), torch.log(Y + 1e-5))                 # log magnitude
+        total = total + sc + mag
+    return total / len(configs)
+
+
 # ----------------------------------------------------------------------------------
 # Helpers: mel, segment slicing, monotonic alignment search
 # ----------------------------------------------------------------------------------
@@ -212,13 +231,16 @@ class VitsObjective(nn.Module):
     """
 
     def __init__(self, model, seg_size=8192, sample_rate=22050, c_mel=45.0, c_kl=1.0,
-                 c_dur=1.0, c_fm=2.0):
+                 c_dur=1.0, c_fm=2.0, c_stft=0.0):
         super().__init__()
         self.model = model
         self.discriminator = Discriminator()
         self.seg_size = seg_size
         self.hop = 256
         self.c_mel, self.c_kl, self.c_dur, self.c_fm = c_mel, c_kl, c_dur, c_fm
+        self.c_stft = c_stft
+        # multi-resolution STFT configs (n_fft, hop, win) — small/mid/large windows
+        self._stft_cfgs = [(512, 128, 512), (1024, 256, 1024), (2048, 512, 2048)]
         self._mel = mel_spectrogram_fn(sample_rate)
 
     def _generator_forward(self, batch):
@@ -254,9 +276,13 @@ class VitsObjective(nn.Module):
             loss_fm = self.c_fm * feature_loss(fmap_r, fmap_g)
             loss_kl = self.c_kl * out["kl"]
             loss_dur = self.c_dur * out["dur_loss"]
-        # mel loss in fp32 (STFT is imprecise/unsupported in bf16)
+        # mel + multi-res STFT losses in fp32 (STFT imprecise/unsupported in bf16)
         loss_mel = mel_loss(y.float(), y_hat.float(), self._mel, self.c_mel)
-        loss_g = loss_adv + loss_fm + loss_mel + loss_kl + loss_dur
+        if self.c_stft > 0:
+            loss_stft = self.c_stft * multi_resolution_stft_loss(y.float(), y_hat.float(), self._stft_cfgs)
+        else:
+            loss_stft = torch.zeros((), device=y.device)
+        loss_g = loss_adv + loss_fm + loss_mel + loss_kl + loss_dur + loss_stft
         opt_g.zero_grad(set_to_none=True)
         loss_g.backward()
         torch.nn.utils.clip_grad_norm_([p for p in self.model.parameters() if p.requires_grad], 10.0)
@@ -264,4 +290,4 @@ class VitsObjective(nn.Module):
 
         return {"loss_d": float(loss_d), "loss_g": float(loss_g), "mel": float(loss_mel),
                 "kl": float(loss_kl), "dur": float(loss_dur), "fm": float(loss_fm),
-                "adv": float(loss_adv)}
+                "adv": float(loss_adv), "stft": float(loss_stft)}

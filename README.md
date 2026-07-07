@@ -10,7 +10,7 @@ KPIs targeted & **measured on an RTX 3090**: VRAM **193 MB** · TTFA **87 / 144 
 
 </div>
 
-> **Thesis.** Code-switching is a *linguistics* problem, not an acoustic one. All Levantine/code-switch intelligence lives in a deterministic, **unit-tested** text→IPA front-end; a tiny non-autoregressive **VITS** does fast waveform generation. One shared IPA space + a **language-ID embedding** ⇒ seamless switches with no engine hand-off. This single design choice is what makes the strict latency/VRAM KPIs reachable *and* keeps the dialect logic transparent and testable.
+> **Thesis.** Code-switching is a *linguistics* problem, not an acoustic one. All Levantine/code-switch intelligence lives in a deterministic, **unit-tested** text→IPA front-end; a tiny non-autoregressive **VITS** does fast waveform generation. One shared IPA space + a **language-ID embedding** ⇒ seamless switches with no engine hand-off. This single design choice is what makes the strict latency /VRAM KPIs reachable *and* keeps the dialect logic transparent and testable.
 
 This README is **comprehensive** — architecture, the linguistic engine, data, every training stage, ablations, the engineering log, measured results, and audio you can play. The design doc is in [`design_doc/DESIGN.md`](design_doc/DESIGN.md) (also `.pdf`/`.html`), and a **conference-style paper** with TikZ diagrams + result graphs is in [`design_doc/paper.pdf`](design_doc/paper.pdf) ([source](design_doc/paper.tex)).
 

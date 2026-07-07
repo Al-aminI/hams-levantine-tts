@@ -53,6 +53,15 @@ class HamsVITSConfig:
     num_languages: int = len(Lang)  # PAD/AR/EN/NEUTRAL
     num_speakers: int = 1
     speaker_embedding_dim: int = 256
+    # Deterministic duration head: replace the mms-tts stochastic duration predictor
+    # (which under-predicts ~3x -> needs a prosody-flattening global length_scale) with
+    # the deterministic VitsDurationPredictor, trained by MSE on MAS target durations.
+    # Gives stable, correct per-phoneme durations -> natural rhythm, length_scale~1.
+    deterministic_duration: bool = False
+    # Output sample rate. 0 => keep the base model's rate (mms-tts-ara = 16000). Set to
+    # 24000 to fine-tune the decoder to native 24 kHz (higher fidelity; the HiFi-GAN
+    # upsamples 256x regardless of rate, so this is a fine-tune not a rebuild).
+    sample_rate: int = 0
     # default inference scales (length_scale<1 => faster speech, helps RTF)
     noise_scale: float = 0.667
     noise_scale_duration: float = 0.8
@@ -114,7 +123,16 @@ if _TORCH:
             from transformers import VitsModel  # local import (heavy)
 
             self.config = config
-            self.backbone = VitsModel.from_pretrained(config.base_model_id)
+            if config.deterministic_duration:
+                from transformers import VitsConfig
+
+                vcfg = VitsConfig.from_pretrained(config.base_model_id)
+                vcfg.use_stochastic_duration_prediction = False  # build deterministic head
+                self.backbone = VitsModel.from_pretrained(
+                    config.base_model_id, config=vcfg, ignore_mismatched_sizes=True
+                )
+            else:
+                self.backbone = VitsModel.from_pretrained(config.base_model_id)
             hidden = self.backbone.config.hidden_size
 
             # (1)+(2) swap in unified phoneme vocab + language embedding
@@ -127,6 +145,12 @@ if _TORCH:
                 self.backbone.embed_speaker = nn.Embedding(
                     config.num_speakers, self.backbone.config.speaker_embedding_size
                 )
+
+            # higher-fidelity output: relabel the backbone's sample rate so the dataset,
+            # mel loss and decoder targets all operate at the new rate (weights unchanged;
+            # the decoder fine-tunes to the extra bandwidth during training).
+            if config.sample_rate:
+                self.backbone.config.sampling_rate = config.sample_rate
 
             # default sampling behaviour
             self.backbone.noise_scale = config.noise_scale
@@ -216,10 +240,16 @@ if _TORCH:
                 neg = (neg1 + neg2 + neg3 + neg4).transpose(1, 2)                  # (b,seq,T_spec)
                 attn = maximum_path(neg, phoneme_lengths, spec_lengths)            # (b,seq,T_spec)
 
-            # duration loss from the stochastic duration predictor (reverse=False, target durs)
-            w = attn.sum(2).unsqueeze(1)                                            # (b,1,seq)
-            dl = bb.duration_predictor(x, t_mask, global_conditioning=g, durations=w)
-            dur_loss = torch.sum(dl) / torch.sum(t_mask)
+            # duration loss: deterministic head -> MSE on log target durations; else the
+            # stochastic predictor's negative log-likelihood.
+            w = attn.sum(2).unsqueeze(1)                                            # (b,1,seq) target frames
+            if self.config.deterministic_duration:
+                log_w = torch.log(torch.clamp(w, min=1.0))
+                log_dur_pred = bb.duration_predictor(x, t_mask, global_conditioning=g)  # (b,1,seq)
+                dur_loss = torch.sum(((log_dur_pred - log_w) ** 2) * t_mask) / torch.sum(t_mask)
+            else:
+                dl = bb.duration_predictor(x, t_mask, global_conditioning=g, durations=w)
+                dur_loss = torch.sum(dl) / torch.sum(t_mask)
 
             # expand prior to spec frames: m_p (b,F,seq) @ attn (b,seq,T_spec) -> (b,F,T_spec)
             m_p_e = torch.matmul(m_p, attn)
@@ -253,9 +283,20 @@ if _TORCH:
         # -- (de)serialisation ------------------------------------------------------
         def save_checkpoint(self, path: str) -> None:
             os.makedirs(path, exist_ok=True)
-            torch.save(self.state_dict(), os.path.join(path, "hams_vits.pt"))
-            with open(os.path.join(path, "hams_vits_config.json"), "w") as f:
-                json.dump(asdict(self.config), f, indent=2)
+            # atomic + fsync so a crash mid-save can't leave a null-byte/partial file
+            # (seen on NTFS when a small config wasn't flushed before a hard kill).
+            def _atomic(name, writer):
+                full = os.path.join(path, name)
+                tmp = full + ".tmp"
+                with open(tmp, "wb") as f:
+                    writer(f)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp, full)
+
+            _atomic("hams_vits.pt", lambda f: torch.save(self.state_dict(), f))
+            _atomic("hams_vits_config.json",
+                    lambda f: f.write(json.dumps(asdict(self.config), indent=2).encode("utf-8")))
 
         @classmethod
         def from_checkpoint(cls, path: str) -> "HamsVITS":
