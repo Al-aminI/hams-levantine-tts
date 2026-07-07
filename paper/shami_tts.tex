@@ -108,7 +108,10 @@ released audio. All experiments run on a \emph{single} RTX~3060; no cloud or mul
 training is used.
 
 \section{Related Work}
-\textbf{End-to-end TTS.} VITS~\cite{vits} unified a conditional variational autoencoder, a
+\textbf{End-to-end TTS.} Neural TTS matured through autoregressive Tacotron~2~\cite{tacotron2},
+which predicts mel-spectrograms for a separate neural vocoder, and non-autoregressive models
+such as FastSpeech~2~\cite{fastspeech2} that predict phoneme durations explicitly for parallel
+generation. VITS~\cite{vits} unified a conditional variational autoencoder, a
 normalizing flow, monotonic alignment search (MAS)~\cite{glowtts}, and a HiFi-GAN
 decoder~\cite{hifigan} into a single non-autoregressive model, achieving strong quality and
 speed. Its stochastic duration predictor (SDP) models duration as a flow, which improves
@@ -117,15 +120,17 @@ duration predictor for controllability. Massively Multilingual Speech (MMS)~\cit
 released per-language VITS checkpoints, including \texttt{mms-tts-ara}, which we adopt as
 our backbone.
 
-\textbf{Neural vocoders.} HiFi-GAN~\cite{hifigan} set the standard for fast GAN vocoding
-using multi-period and multi-scale discriminators (MPD/MSD). Parallel
+\textbf{Neural vocoders.} Autoregressive WaveNet~\cite{wavenet} first achieved
+natural-sounding neural vocoding, at high inference cost. HiFi-GAN~\cite{hifigan} set the
+standard for fast GAN vocoding using multi-period and multi-scale discriminators (MPD/MSD). Parallel
 WaveGAN~\cite{pwg} popularized the multi-resolution STFT (MR-STFT) loss we borrow.
 BigVGAN~\cite{bigvgan} adds a periodic \emph{Snake} activation~\cite{snake} and
 \emph{anti-aliased} up/down-sampling (a low-pass filter around each nonlinearity), which
 suppresses the aliasing and phase artifacts responsible for the ``robotic sheen'' of
 earlier vocoders; it is trained as a universal 24\,/\,44\,kHz vocoder.
 
-\textbf{Arabic NLP for TTS.} Dialectal Arabic G2P is under-served relative to MSA. Automatic
+\textbf{Arabic NLP for TTS.} Dialectal Arabic G2P is under-served relative to MSA, and most
+open Arabic speech corpora are MSA (e.g., the Arabic Speech Corpus~\cite{halabi}). Automatic
 diacritization (tashkeel restoration) is a prerequisite for rule-based G2P; CAMeL
 Tools~\cite{cameltools} provides a production morphological disambiguator, and
 transformer diacritizers such as CATT~\cite{catt} report state-of-the-art diacritic error.
@@ -336,15 +341,16 @@ BigVGAN vocoder.}
 \end{figure}
 
 \section{Experimental Setup}
-\textbf{Data.} We train on \texttt{lahgtna-levantine-tts} (CC-BY-4.0): 50{,}000 clips,
-66.8\,h, 24\,kHz, 10 speakers, drawn from the Shami Levantine corpus plus \(\sim\!12\%\)
+\textbf{Data.} We train on \texttt{lahgtna-levantine-tts}~\cite{lahgtna} (CC-BY-4.0): 50{,}000
+clips, 66.8\,h, 24\,kHz, 10 speakers, drawn from the Shami Levantine corpus~\cite{shami} plus
+\(\sim\!12\%\)
 synthetic code-switch sentences. Text is partially diacritized. For the single-speaker system
 evaluated here we use one speaker (``Badr,'' \(\sim\!6.2\)\,h after filtering to
 \([0.8,12]\)\,s clips), phonemized offline through the v2 front-end. A 40-utterance held-out
 set spans pure Levantine and code-switching.
 
 \textbf{Model \& training.} ShamiVITS has \(\sim\!36\)M parameters; the HiFi-GAN
-discriminator \(47\)M; BigVGAN \(112\)M. Training uses bf16 autocast, AdamW
+discriminator \(47\)M; BigVGAN \(112\)M. Training uses bf16 autocast, AdamW~\cite{adamw}
 (\(\beta\!=\!0.8,0.99\)), batch 12--16, \texttt{seg\_size} 8192--12288, on a single RTX~3060
 (12\,GB); loss weights \(c_{\text{mel}}\!=\!45\), \(c_{\text{kl}}\!=\!1\),
 \(c_{\text{dur}}\!=\!1\text{--}2\), \(c_{\text{fm}}\!=\!4\), \(c_{\text{stft}}\!=\!3\). Each
@@ -451,7 +457,7 @@ we therefore emphasize \emph{relative} differences and released audio over preci
 values. ASR round-trip CER via Whisper has a floor well above zero on dialectal
 Arabic --- Whisper is MSA-biased and penalizes correct Levantine pronunciations --- so it
 under-states true quality and mis-scores the English portions of code-switch (visible as the
-one column where BigVGAN's CER rises); human MOS would be a better instrument and is future
+one column where BigVGAN's CER rises); a human MOS study~\cite{mos} would be a better instrument and is future
 work. The BigVGAN path currently re-vocodes (running two vocoders); a cleaner design predicts
 the mel directly, which we leave to v3 along with multi-speaker conditioning (the data has 10
 speakers; the single-speaker backbone lacks speaker-conditioning layers). Finally, the base
@@ -591,6 +597,22 @@ Natural Language Processing.'' \emph{LREC}, 2020.
 \emph{ArabicNLP}, 2024.
 \bibitem{espeak} eSpeak NG contributors. ``eSpeak NG Text-to-Speech.''
 \url{https://github.com/espeak-ng/espeak-ng}, 2016--.
+\bibitem{tacotron2} J.~Shen, R.~Pang, R.~J.~Weiss, et al. ``Natural TTS Synthesis by
+Conditioning WaveNet on Mel Spectrogram Predictions.'' \emph{ICASSP}, 2018.
+\bibitem{fastspeech2} Y.~Ren, C.~Hu, X.~Tan, T.~Qin, S.~Zhao, Z.~Zhao, T.-Y.~Liu.
+``FastSpeech~2: Fast and High-Quality End-to-End Text to Speech.'' \emph{ICLR}, 2021.
+\bibitem{wavenet} A.~van~den~Oord, S.~Dieleman, H.~Zen, et al. ``WaveNet: A Generative Model
+for Raw Audio.'' \emph{arXiv:1609.03499}, 2016.
+\bibitem{lahgtna} M.~Aly. ``Lahgtna: A Levantine Arabic Text-to-Speech Dataset.''
+Hugging Face Datasets, 2024. \url{https://huggingface.co/datasets/mohammedaly22/lahgtna-levantine-tts}.
+\bibitem{shami} K.~Abu~Kwaik, M.~Saad, S.~Chatzikyriakidis, S.~Dobnik. ``Shami: A Corpus of
+Levantine Arabic Dialects.'' \emph{LREC}, 2018.
+\bibitem{halabi} N.~Halabi. ``Modern Standard Arabic Phonetics for Speech Synthesis
+(Arabic Speech Corpus).'' PhD thesis, University of Southampton, 2016.
+\bibitem{adamw} I.~Loshchilov, F.~Hutter. ``Decoupled Weight Decay Regularization.''
+\emph{ICLR}, 2019.
+\bibitem{mos} ITU-T. ``Recommendation P.800: Methods for Subjective Determination of
+Transmission Quality.'' International Telecommunication Union, 1996.
 \end{thebibliography}
 }
 \end{document}
